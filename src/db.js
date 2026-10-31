@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS tickets (
   tecnico_id INTEGER REFERENCES tecnicos(id) ON DELETE SET NULL,
   filial_id INTEGER REFERENCES filiais(id) ON DELETE SET NULL,
   github_issue_url TEXT,
+  resolvido_em TEXT,
   criado_em TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   atualizado_em TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
@@ -45,6 +46,11 @@ function abrirBanco(arquivo = process.env.DB_PATH || path.join(__dirname, "..", 
   if (arquivo !== ":memory:") db.exec("PRAGMA journal_mode = WAL;");
   db.exec("PRAGMA foreign_keys = ON;");
   db.exec(SCHEMA);
+
+  // Migracao: bancos criados antes desta versao nao tem a coluna resolvido_em.
+  const colunas = db.prepare("PRAGMA table_info(tickets)").all().map((c) => c.name);
+  if (!colunas.includes("resolvido_em")) db.exec("ALTER TABLE tickets ADD COLUMN resolvido_em TEXT");
+
   return db;
 }
 

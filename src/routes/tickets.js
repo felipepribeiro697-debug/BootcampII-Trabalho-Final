@@ -1,5 +1,5 @@
 const express = require("express");
-const { validarTicket, validarMudancaStatus, ehCritico, calcularSla, PRIORIDADES } = require("../regras");
+const { validarTicket, validarMudancaStatus, ehCritico, slaDoTicket, PRIORIDADES } = require("../regras");
 const { asyncHandler } = require("../asyncHandler");
 
 const SELECT_TICKET = `
@@ -13,7 +13,7 @@ module.exports = function ticketsRouter(db, github) {
   const r = express.Router();
 
   const buscar = (id) => db.prepare(`${SELECT_TICKET} WHERE t.id = ?`).get(id);
-  const comSla = (t) => (t ? { ...t, sla: calcularSla(t.prioridade, t.criado_em) } : t);
+  const comSla = (t) => (t ? { ...t, sla: slaDoTicket(t) } : t);
 
   // Confere se tecnico/filial informados existem (evita erro de FOREIGN KEY no banco).
   // Retorna a mensagem de erro, ou null se esta tudo certo.
@@ -92,16 +92,21 @@ module.exports = function ticketsRouter(db, github) {
       if (!PRIORIDADES.includes(req.body.prioridade)) return res.status(400).json({ erro: "Prioridade invalida." });
       novo.prioridade = req.body.prioridade;
     }
-    if ("status" in req.body) {
-      const erro = validarMudancaStatus(novo, req.body.status);
+    if ("status" in req.body) novo.status = req.body.status;
+
+    // A regra vale para o estado FINAL: mudar o status OU tirar o tecnico
+    // nao pode deixar um ticket fora de "aberto" sem responsavel.
+    if ("status" in req.body || "tecnico_id" in req.body) {
+      const erro = validarMudancaStatus(novo, novo.status);
       if (erro) return res.status(400).json({ erro });
-      novo.status = req.body.status;
     }
 
     db.prepare(
       `UPDATE tickets SET status = ?, tecnico_id = ?, prioridade = ?,
+       resolvido_em = CASE WHEN ? = 'resolvido'
+         THEN COALESCE(resolvido_em, strftime('%Y-%m-%dT%H:%M:%fZ','now')) ELSE NULL END,
        atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`
-    ).run(novo.status, novo.tecnico_id, novo.prioridade, atual.id);
+    ).run(novo.status, novo.tecnico_id, novo.prioridade, novo.status, atual.id);
 
     // Se a prioridade subiu para critica, tambem vira issue
     const { ticket, avisoGithub } = await tentarIssue(buscar(atual.id));

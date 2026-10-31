@@ -45,7 +45,7 @@ function validarTicket(dados) {
 function validarMudancaStatus(ticket, novoStatus) {
   if (!STATUS.includes(novoStatus)) return `Status invalido. Use: ${STATUS.join(", ")}.`;
   if (novoStatus !== "aberto" && !ticket.tecnico_id) {
-    return "Atribua um tecnico responsavel antes de mover o ticket.";
+    return "Um ticket fora de 'aberto' precisa de um tecnico responsavel.";
   }
   return null;
 }
@@ -65,6 +65,16 @@ function calcularSla(prioridade, criadoEm, agora = new Date()) {
   const prazo = new Date(inicio.getTime() + horas * 3600 * 1000);
   const horasRestantes = Math.round(((prazo - agora) / 3600000) * 10) / 10;
   return { prazo, atrasado: horasRestantes < 0, horasRestantes };
+}
+
+/**
+ * SLA de um ticket do banco. Em ticket resolvido o "relogio" para no momento
+ * da resolucao (resolvido_em), em vez de continuar contando ate hoje.
+ */
+function slaDoTicket(ticket, agora = new Date()) {
+  const resolvido = ticket.status === "resolvido" && ticket.resolvido_em;
+  const fim = resolvido ? new Date(ticket.resolvido_em) : agora;
+  return { ...calcularSla(ticket.prioridade, ticket.criado_em, fim), encerrado: Boolean(resolvido) };
 }
 
 /** Monta titulo e corpo da issue do GitHub a partir do ticket. */
@@ -96,5 +106,6 @@ module.exports = {
   validarMudancaStatus,
   ehCritico,
   calcularSla,
+  slaDoTicket,
   montarIssue,
 };

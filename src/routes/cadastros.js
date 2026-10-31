@@ -17,6 +17,13 @@ function tecnicosRouter(db) {
   });
 
   r.delete("/:id", (req, res) => {
+    // Nao deixa chamado em atendimento sem responsavel.
+    const { n } = db
+      .prepare("SELECT COUNT(*) AS n FROM tickets WHERE tecnico_id = ? AND status IN ('em_andamento', 'aguardando')")
+      .get(req.params.id);
+    if (n > 0) {
+      return res.status(409).json({ erro: `Tecnico possui ${n} chamado(s) em atendimento. Reatribua antes de remover.` });
+    }
     const info = db.prepare("DELETE FROM tecnicos WHERE id = ?").run(req.params.id);
     if (!info.changes) return res.status(404).json({ erro: "Tecnico nao encontrado." });
     res.status(204).end();

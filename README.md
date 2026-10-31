@@ -117,8 +117,8 @@ docker push USUARIO_DOCKERHUB/helpdesk-kanban:latest
 ```bash
 npm test
 ```
-18 testes Jest em `tests/`:
-- `regras.test.js` — validação de chamado, CEP, regra de mudança de status, SLA e montagem da issue.
+Testes Jest em `tests/` (o total aparece no resumo do `npm test`):
+- `regras.test.js` — validação de chamado, CEP, regra de mudança de status, SLA (que congela quando o chamado é resolvido) e montagem da issue.
 - `api.test.js` — CRUD pela API com banco em memória; ViaCEP e GitHub são simulados (mocks), então os testes não dependem de internet.
 
 O workflow `.github/workflows/ci.yml` roda os testes em toda PR e todo push para a `main`.

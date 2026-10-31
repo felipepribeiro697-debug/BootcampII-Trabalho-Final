@@ -6,6 +6,11 @@
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning src/server.js"
   },
-  "engines": { "node": ">=22.13" },
-  "license": "MIT"
+  "engines": {
+    "node": ">=22.13"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.22.3"
+  }
 }

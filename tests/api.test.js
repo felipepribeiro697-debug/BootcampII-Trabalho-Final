@@ -60,6 +60,43 @@ test("tecnico inexistente responde 400 e nao derruba o servidor", async () => {
   await request(app).get("/api/saude").expect(200);
 });
 
+test("nao permite tirar o tecnico de um ticket em andamento", async () => {
+  const { body: t } = await request(app)
+    .post("/api/tickets")
+    .send({ titulo: "Nobreak apitando", categoria: "hardware", prioridade: "alta", tecnico_id: 2 });
+  await request(app).patch(`/api/tickets/${t.id}`).send({ status: "em_andamento" }).expect(200);
+
+  await request(app).patch(`/api/tickets/${t.id}`).send({ tecnico_id: null }).expect(400);
+
+  // voltando para "aberto" pode ficar sem tecnico
+  const ok = await request(app).patch(`/api/tickets/${t.id}`).send({ status: "aberto", tecnico_id: null }).expect(200);
+  expect(ok.body.tecnico_id).toBeNull();
+});
+
+test("nao remove tecnico com chamado em atendimento (409)", async () => {
+  const { body: t } = await request(app)
+    .post("/api/tickets")
+    .send({ titulo: "Access point reiniciando", categoria: "rede", prioridade: "media", tecnico_id: 1 });
+  await request(app).patch(`/api/tickets/${t.id}`).send({ status: "em_andamento" });
+
+  await request(app).delete("/api/tecnicos/1").expect(409);
+
+  await request(app).patch(`/api/tickets/${t.id}`).send({ status: "resolvido" }).expect(200);
+  await request(app).delete("/api/tecnicos/1").expect(204);
+});
+
+test("ticket resolvido guarda resolvido_em e SLA encerrado", async () => {
+  const { body: t } = await request(app)
+    .post("/api/tickets")
+    .send({ titulo: "Cabo de rede rompido", categoria: "rede", prioridade: "baixa", tecnico_id: 1 });
+  const r = await request(app).patch(`/api/tickets/${t.id}`).send({ status: "resolvido" }).expect(200);
+  expect(r.body.resolvido_em).toBeTruthy();
+  expect(r.body.sla.encerrado).toBe(true);
+
+  const reaberto = await request(app).patch(`/api/tickets/${t.id}`).send({ status: "aberto" }).expect(200);
+  expect(reaberto.body.resolvido_em).toBeNull();
+});
+
 test("JSON invalido no corpo responde 400", async () => {
   const r = await request(app)
     .post("/api/tickets")

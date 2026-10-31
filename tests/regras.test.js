@@ -6,6 +6,7 @@ const {
   validarMudancaStatus,
   ehCritico,
   calcularSla,
+  slaDoTicket,
   montarIssue,
 } = require("../src/regras");
 
@@ -70,6 +71,14 @@ describe("SLA e chamados criticos", () => {
   test("marca SLA estourado quando passa do prazo", () => {
     const sla = calcularSla("alta", "2026-01-01T10:00:00Z", new Date("2026-01-01T19:00:00Z"));
     expect(sla.atrasado).toBe(true);
+  });
+
+  test("SLA de ticket resolvido para de contar na resolucao", () => {
+    const t = { prioridade: "critica", status: "resolvido", criado_em: "2026-01-01T10:00:00Z", resolvido_em: "2026-01-01T12:00:00Z" };
+    const sla = slaDoTicket(t, new Date("2026-02-01T00:00:00Z")); // um mes depois
+    expect(sla.horasRestantes).toBe(2);
+    expect(sla.atrasado).toBe(false);
+    expect(sla.encerrado).toBe(true);
   });
 
   test("somente prioridade critica vira issue", () => {

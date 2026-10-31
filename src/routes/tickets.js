@@ -1,5 +1,6 @@
 const express = require("express");
 const { validarTicket, validarMudancaStatus, ehCritico, calcularSla, PRIORIDADES } = require("../regras");
+const { asyncHandler } = require("../asyncHandler");
 
 const SELECT_TICKET = `
   SELECT t.*, tc.nome AS tecnico_nome, f.nome AS filial_nome, f.cidade AS filial_cidade, f.uf AS filial_uf
@@ -13,6 +14,18 @@ module.exports = function ticketsRouter(db, github) {
 
   const buscar = (id) => db.prepare(`${SELECT_TICKET} WHERE t.id = ?`).get(id);
   const comSla = (t) => (t ? { ...t, sla: calcularSla(t.prioridade, t.criado_em) } : t);
+
+  // Confere se tecnico/filial informados existem (evita erro de FOREIGN KEY no banco).
+  // Retorna a mensagem de erro, ou null se esta tudo certo.
+  function validarReferencias({ tecnico_id, filial_id }) {
+    if (tecnico_id && !db.prepare("SELECT 1 FROM tecnicos WHERE id = ?").get(tecnico_id)) {
+      return "Tecnico nao encontrado.";
+    }
+    if (filial_id && !db.prepare("SELECT 1 FROM filiais WHERE id = ?").get(filial_id)) {
+      return "Filial nao encontrada.";
+    }
+    return null;
+  }
 
   // Tenta abrir a issue; falha do GitHub NAO impede o ticket de existir.
   async function tentarIssue(ticket) {
@@ -47,11 +60,13 @@ module.exports = function ticketsRouter(db, github) {
   });
 
   // Criar
-  r.post("/", async (req, res) => {
+  r.post("/", asyncHandler(async (req, res) => {
     const { valido, erros } = validarTicket(req.body);
     if (!valido) return res.status(400).json({ erro: erros.join(" ") });
 
     const { titulo, descricao = "", categoria, prioridade, tecnico_id = null, filial_id = null } = req.body;
+    const erroRef = validarReferencias({ tecnico_id, filial_id });
+    if (erroRef) return res.status(400).json({ erro: erroRef });
     const info = db
       .prepare(
         "INSERT INTO tickets (titulo, descricao, categoria, prioridade, tecnico_id, filial_id) VALUES (?, ?, ?, ?, ?, ?)"
@@ -60,15 +75,19 @@ module.exports = function ticketsRouter(db, github) {
 
     const { ticket, avisoGithub } = await tentarIssue(buscar(info.lastInsertRowid));
     res.status(201).json({ ...comSla(ticket), avisoGithub });
-  });
+  }));
 
   // Atualizar status / tecnico / prioridade (usado pelo drag-and-drop do Kanban)
-  r.patch("/:id", async (req, res) => {
+  r.patch("/:id", asyncHandler(async (req, res) => {
     const atual = buscar(req.params.id);
     if (!atual) return res.status(404).json({ erro: "Ticket nao encontrado." });
 
     const novo = { ...atual };
-    if ("tecnico_id" in req.body) novo.tecnico_id = req.body.tecnico_id || null;
+    if ("tecnico_id" in req.body) {
+      novo.tecnico_id = req.body.tecnico_id || null;
+      const erroRef = validarReferencias({ tecnico_id: novo.tecnico_id });
+      if (erroRef) return res.status(400).json({ erro: erroRef });
+    }
     if ("prioridade" in req.body) {
       if (!PRIORIDADES.includes(req.body.prioridade)) return res.status(400).json({ erro: "Prioridade invalida." });
       novo.prioridade = req.body.prioridade;
@@ -87,10 +106,10 @@ module.exports = function ticketsRouter(db, github) {
     // Se a prioridade subiu para critica, tambem vira issue
     const { ticket, avisoGithub } = await tentarIssue(buscar(atual.id));
     res.json({ ...comSla(ticket), avisoGithub });
-  });
+  }));
 
   // Forcar criacao da issue manualmente
-  r.post("/:id/github", async (req, res) => {
+  r.post("/:id/github", asyncHandler(async (req, res) => {
     const t = buscar(req.params.id);
     if (!t) return res.status(404).json({ erro: "Ticket nao encontrado." });
     if (t.github_issue_url) return res.json(comSla(t));
@@ -101,7 +120,7 @@ module.exports = function ticketsRouter(db, github) {
     } catch (e) {
       res.status(e.status || 500).json({ erro: e.message });
     }
-  });
+  }));
 
   r.delete("/:id", (req, res) => {
     const info = db.prepare("DELETE FROM tickets WHERE id = ?").run(req.params.id);

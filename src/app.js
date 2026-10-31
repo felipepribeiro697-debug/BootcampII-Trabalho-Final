@@ -24,9 +24,14 @@ function criarApp(db, { github = githubDesligado } = {}) {
   app.use("/api/tickets", ticketsRouter(db, github));
   app.use("/api/tecnicos", tecnicosRouter(db));
 
+  // Handler de erro: respeita err.status (ex.: 400 do express.json com JSON invalido).
   app.use((err, req, res, next) => {
-    console.error(err);
-    res.status(500).json({ erro: "Erro interno do servidor." });
+    const status = err.status || err.statusCode || 500;
+    if (status >= 500) console.error(err);
+    let erro = "Erro interno do servidor.";
+    if (err.type === "entity.parse.failed") erro = "JSON invalido no corpo da requisicao.";
+    else if (status < 500) erro = err.message;
+    res.status(status).json({ erro });
   });
 
   return app;

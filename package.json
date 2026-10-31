@@ -1,0 +1,11 @@
+{
+  "name": "helpdesk-kanban",
+  "version": "1.0.0",
+  "description": "Gerenciador de Tickets de Suporte (Helpdesk) estilo Kanban - Bootcamp II Etapa 03",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/server.js"
+  },
+  "engines": { "node": ">=22.13" },
+  "license": "MIT"
+}

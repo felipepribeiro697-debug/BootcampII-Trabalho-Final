@@ -15,7 +15,7 @@ Sistema estilo **Kanban** para abrir, categorizar e acompanhar chamados técnico
 | Nome | Matrícula | Usuário GitHub | Funcionalidade (dono) | Principal PR |
 |---|---|---|---|---|
 | Felipe Domingos Ribeiro Pereira | 22604250 | @felipepribeiro697-debug | Backend e persistência (SQLite), testes + GitHub Actions, Docker | [#_](link) |
-| Gabriel Ribeiro de Sousa | 22601424 | @_usuario_ | Integração com APIs externas (ViaCEP e GitHub Issues), frontend Kanban | [#_](link) |
+| Gabriel Ribeiro de Sousa | 22601424 | @bielrsousa | Integração com APIs externas (ViaCEP e GitHub Issues), frontend Kanban | [#_](link) |
 
 Divisão das PRs em [`docs/PLANO-DE-PRS.md`](docs/PLANO-DE-PRS.md). Todo integrante escreve código.
 

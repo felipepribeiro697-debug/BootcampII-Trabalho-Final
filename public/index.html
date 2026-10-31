@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Helpdesk Kanban</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topo">
+  <h1>Helpdesk Kanban</h1>
+  <span id="github" class="selo">GitHub: verificando…</span>
+  <label>Prioridade
+    <select id="filtro"><option value="">Todas</option><option value="critica">Crítica</option><option value="alta">Alta</option><option value="media">Média</option><option value="baixa">Baixa</option></select>
+  </label>
+  <button id="abrir-cad" class="sec">Técnicos e filiais</button>
+</header>
+
+<main>
+  <form id="novo" class="novo">
+    <input name="titulo" placeholder="Título do chamado (mín. 5 caracteres)" required minlength="5" maxlength="120">
+    <input name="descricao" placeholder="Descrição (opcional)">
+    <select name="categoria"><option value="hardware">Hardware</option><option value="rede">Rede</option><option value="software">Software</option><option value="outro">Outro</option></select>
+    <select name="prioridade"><option value="baixa">Baixa</option><option value="media" selected>Média</option><option value="alta">Alta</option><option value="critica">Crítica</option></select>
+    <select name="tecnico_id" id="f-tec"></select>
+    <select name="filial_id" id="f-fil"></select>
+    <button>Criar chamado</button>
+  </form>
+  <div id="quadro" class="quadro"></div>
+</main>
+
+<dialog id="cad">
+  <h2>Técnicos e filiais</h2>
+  <form id="f-tecnico" class="linha"><input name="nome" placeholder="Nome do técnico" required minlength="3"><input name="especialidade" placeholder="Especialidade (ex.: redes)"><button>Adicionar técnico</button></form>
+  <ul id="l-tec"></ul>
+  <form id="f-filial" class="linha"><input name="nome" placeholder="Nome da filial" required minlength="3"><input name="cep" placeholder="CEP (8 dígitos)" required><button>Adicionar filial</button></form>
+  <ul id="l-fil"></ul>
+  <button id="fechar-cad" class="sec">Fechar</button>
+</dialog>
+
+<div id="aviso" role="status" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

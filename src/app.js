@@ -4,16 +4,18 @@ const express = require("express");
 const path = require("path");
 const ticketsRouter = require("./routes/tickets");
 const { tecnicosRouter } = require("./routes/cadastros");
+const { filiaisRouter, cepRouter } = require("./routes/filiais");
+const { criarViaCep } = require("./services/viacep");
 
-// Integracao com GitHub ainda nao implementada: servico "desligado".
+// Servico "desligado": usado quando nenhum cliente do GitHub e informado (ex.: nos testes).
 const githubDesligado = {
   githubAtivo: () => false,
   criarIssue: async () => {
-    throw Object.assign(new Error("Integracao com GitHub ainda nao implementada."), { status: 400 });
+    throw Object.assign(new Error("Integracao com GitHub desligada."), { status: 400 });
   },
 };
 
-function criarApp(db, { github = githubDesligado } = {}) {
+function criarApp(db, { github = githubDesligado, viacep = criarViaCep() } = {}) {
   const app = express();
   app.use(express.json());
   app.use(express.static(path.join(__dirname, "..", "public")));
@@ -23,6 +25,8 @@ function criarApp(db, { github = githubDesligado } = {}) {
 
   app.use("/api/tickets", ticketsRouter(db, github));
   app.use("/api/tecnicos", tecnicosRouter(db));
+  app.use("/api/filiais", filiaisRouter(db, viacep));
+  app.use("/api/cep", cepRouter(viacep));
 
   // Handler de erro: respeita err.status (ex.: 400 do express.json com JSON invalido).
   app.use((err, req, res, next) => {

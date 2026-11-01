@@ -18,7 +18,7 @@ Sistema estilo **Kanban** para abrir, categorizar e acompanhar chamados técnico
 | Felipe Domingos Ribeiro Pereira | 22604250 | @felipepribeiro697-debug | Backend e persistência (SQLite), testes + GitHub Actions, Docker | [#1](https://github.com/felipepribeiro697-debug/BootcampII-Trabalho-Final/pull/1) |
 | Gabriel Ribeiro de Sousa | 22601424 | @bielrsousa | Integração com APIs externas (ViaCEP e GitHub Issues), frontend Kanban | [#4](https://github.com/felipepribeiro697-debug/BootcampII-Trabalho-Final/pull/4) |
 
-Divisão das PRs em [`docs/PLANO-DE-PRS.md`](docs/PLANO-DE-PRS.md). Todo integrante escreve código.
+Todo integrante escreve código: o histórico completo das PRs, com autor e revisor de cada uma, está na [seção 5](#5-evidências).
 
 ---
 
@@ -147,13 +147,44 @@ O workflow `.github/workflows/ci.yml` roda os testes em toda PR e todo push para
 
 ## 5. Evidências
 
-### PR bloqueada pelo CI
-_Colar aqui o print da PR com teste quebrado de propósito e o merge bloqueado._
+### Histórico de Pull Requests (diário de bordo)
+Nenhum código entrou direto na `main`: cada funcionalidade nasceu numa branch própria e foi revisada e aprovada pelo outro integrante antes do merge.
 
-![PR bloqueada](docs/evidencias/pr-bloqueada.png)
-
-### Conflito de merge resolvido
-_Relatar: quais branches, qual arquivo, o que conflitou e como o grupo resolveu._
+| PR | Branch | Autor | Revisor | O que a revisão trouxe |
+|---|---|---|---|---|
+| [#1](https://github.com/felipepribeiro697-debug/BootcampII-Trabalho-Final/pull/1) | `feature/backend-tickets` | Felipe | Gabriel | Apontou que um erro em rota `async` derrubava o servidor (`tecnico_id` inexistente) e que JSON inválido respondia 500. Corrigido na própria PR com `asyncHandler`, validação de técnico/filial e `err.status`. |
+| [#2](https://github.com/felipepribeiro697-debug/BootcampII-Trabalho-Final/pull/2) | `feature/testes-ci` | Felipe | Gabriel | Conferiu que os casos levantados na #1 ganharam testes; sugeriu tirar a contagem fixa de testes do README e atualizar as actions (aviso de Node 20). |
+| [#3](https://github.com/felipepribeiro697-debug/BootcampII-Trabalho-Final/pull/3) | `fix/ajustes-revisao` | Felipe | Gabriel | Atendeu aos pontos não bloqueantes da #1 e #2 (regra do técnico no estado final, 409 ao remover técnico ocupado, SLA congelado em `resolvido_em`, actions v6). A revisão notou que a descrição citava 5 testes novos quando eram 4. |
+| [#4](https://github.com/felipepribeiro697-debug/BootcampII-Trabalho-Final/pull/4) | `feature/integracao-apis` | Gabriel | Felipe | Revisão com teste do CEP real; sugeriu atualizar a árvore do README e tratar `logradouro` nulo no frontend (atendidos na #5 e #6). |
+| [#5](https://github.com/felipepribeiro697-debug/BootcampII-Trabalho-Final/pull/5) | `feature/frontend-kanban` | Gabriel | Felipe | Teste manual do fluxo (filial por CEP, técnico, mudança de coluna, SLA); sugeriu melhorar contraste no tema escuro e acentos nas tags. |
+| [#6](https://github.com/felipepribeiro697-debug/BootcampII-Trabalho-Final/pull/6) | `feature/docker` | Felipe | Gabriel | Revisou Dockerfile e workflow; lembrou de confirmar o segredo `DOCKERHUB_TOKEN` e a visibilidade pública da imagem (ambos confirmados). |
 
 ### Proteção da main
-_Print de Settings → Branches/Rules mostrando "Require a pull request" (1 aprovação) e "Require status checks" com o check `testes`._
+Ruleset `protege-main` ativo na `main`: **Pull Request obrigatória com 1 aprovação**, **check `testes` obrigatório** (status check), bloqueio de *force push* e de exclusão da branch.
+
+Na PR #6, com os dois checks verdes, o merge seguia bloqueado até a aprovação do revisor; o check de testes aparece marcado como **Required**:
+
+![Checks da PR #6 e merge bloqueado aguardando revisão](docs/evidencias/checks-e-protecao-pr6.png)
+
+Regras ativas na `main`, consultadas pela API do GitHub (`gh api repos/.../rules/branches/main`):
+
+![Regras da main](docs/evidencias/regras-da-main.png)
+
+### PR bloqueada pelo CI
+O check `testes` está configurado como obrigatório (selo **Required** no print acima), mas o grupo **não executou** a PR com um teste quebrado de propósito, então não há print do merge bloqueado por teste vermelho.
+
+### GitHub Actions
+- `ci.yml` — roda `npm test` em toda PR e push para a `main` (check obrigatório `testes`).
+- `docker.yml` — em toda PR gera a imagem e testa o `docker run`; no merge para a `main` publica no Docker Hub.
+
+![Execuções do workflow Docker](docs/evidencias/workflow-docker.png)
+
+### Docker Hub
+Imagem pública `steverogers03/helpdesk-kanban`, publicada pelo workflow com as tags `latest` e a do commit do merge. O `docker run` do README foi testado baixando a imagem do Docker Hub, inclusive pelo Gabriel em outra máquina.
+
+![Repositório público no Docker Hub](docs/evidencias/docker-hub-publico.png)
+
+![docker run baixando a imagem do Docker Hub](docs/evidencias/docker-run-pull.png)
+
+### Conflito de merge
+Não houve conflito de merge. Cada PR foi aberta a partir da `main` atualizada, e na PR #4 as rotas de filiais foram criadas num arquivo próprio (`src/routes/filiais.js`) justamente para não alterar `cadastros.js` e `tickets.js`, que tinham acabado de mudar na PR #3.

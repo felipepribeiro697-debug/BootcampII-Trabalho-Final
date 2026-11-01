@@ -1,6 +1,7 @@
 # Helpdesk Kanban — Gerenciador de Tickets de Suporte
 
 ![CI - Testes](https://github.com/felipepribeiro697-debug/BootcampII-Trabalho-Final/actions/workflows/ci.yml/badge.svg)
+![Docker - Imagem](https://github.com/felipepribeiro697-debug/BootcampII-Trabalho-Final/actions/workflows/docker.yml/badge.svg)
 
 Bootcamp II · Etapa 03 · Desafio final em grupo — CEUB
 
@@ -14,8 +15,8 @@ Sistema estilo **Kanban** para abrir, categorizar e acompanhar chamados técnico
 
 | Nome | Matrícula | Usuário GitHub | Funcionalidade (dono) | Principal PR |
 |---|---|---|---|---|
-| Felipe Domingos Ribeiro Pereira | 22604250 | @felipepribeiro697-debug | Backend e persistência (SQLite), testes + GitHub Actions, Docker | [#_](link) |
-| Gabriel Ribeiro de Sousa | 22601424 | @bielrsousa | Integração com APIs externas (ViaCEP e GitHub Issues), frontend Kanban | [#_](link) |
+| Felipe Domingos Ribeiro Pereira | 22604250 | @felipepribeiro697-debug | Backend e persistência (SQLite), testes + GitHub Actions, Docker | [#1](https://github.com/felipepribeiro697-debug/BootcampII-Trabalho-Final/pull/1) |
+| Gabriel Ribeiro de Sousa | 22601424 | @bielrsousa | Integração com APIs externas (ViaCEP e GitHub Issues), frontend Kanban | [#4](https://github.com/felipepribeiro697-debug/BootcampII-Trabalho-Final/pull/4) |
 
 Divisão das PRs em [`docs/PLANO-DE-PRS.md`](docs/PLANO-DE-PRS.md). Todo integrante escreve código.
 
@@ -48,13 +49,16 @@ src/
   app.js               monta o Express (recebe banco e serviços → testável)
   db.js                schema SQLite + técnicos de exemplo
   regras.js            regras de negócio (funções puras: validação, SLA, CEP)
+  asyncHandler.js      encaminha erros das rotas async para o handler de erro
   routes/tickets.js    CRUD de chamados + envio ao GitHub
-  routes/cadastros.js  técnicos, filiais e consulta de CEP
+  routes/cadastros.js  técnicos
+  routes/filiais.js    filiais (endereço via ViaCEP) e consulta de CEP
   services/viacep.js   cliente ViaCEP
   services/github.js   cliente GitHub Issues
-public/                frontend Kanban
-tests/                 testes Jest (unitários + API)
-.github/workflows/ci.yml
+public/                frontend Kanban (HTML, CSS e JS puro)
+tests/                 testes Jest (regras, API, filiais e serviços externos)
+.github/workflows/ci.yml       testes a cada PR
+.github/workflows/docker.yml   gera, testa e publica a imagem Docker
 Dockerfile
 ```
 
@@ -82,26 +86,38 @@ npm start
 ```
 
 ### Com Docker (imagem do Docker Hub)
-Imagem: https://hub.docker.com/r/USUARIO_DOCKERHUB/helpdesk-kanban
+Imagem pública: https://hub.docker.com/r/steverogers03/helpdesk-kanban
 
+Só precisa do Docker instalado (não precisa de Node nem do código):
 ```bash
-docker run -d --name helpdesk -p 3000:3000 -v helpdesk-dados:/app/data USUARIO_DOCKERHUB/helpdesk-kanban:latest
-# abra http://localhost:3000
+docker run -d --name helpdesk -p 3000:3000 -v helpdesk-dados:/app/data steverogers03/helpdesk-kanban:latest
+```
+Abra http://localhost:3000. O volume `helpdesk-dados` guarda o banco SQLite, então os chamados continuam lá se o container for recriado.
+
+Com a integração do GitHub ligada (chamado crítico vira issue):
+```bash
+docker run -d --name helpdesk -p 3000:3000 -v helpdesk-dados:/app/data -e GITHUB_TOKEN=seu_token -e GITHUB_REPO=usuario/repositorio steverogers03/helpdesk-kanban:latest
 ```
 
-Com a integração do GitHub ligada:
+Comandos úteis:
 ```bash
-docker run -d --name helpdesk -p 3000:3000 -v helpdesk-dados:/app/data \
-  -e GITHUB_TOKEN=seu_token -e GITHUB_REPO=usuario/repositorio \
-  USUARIO_DOCKERHUB/helpdesk-kanban:latest
+docker ps                      # STATUS deve mostrar "(healthy)" depois de alguns segundos
+docker logs helpdesk           # mostra se a integração com o GitHub está ativa
+docker stop helpdesk && docker rm helpdesk
 ```
 
 ### Gerar e publicar a imagem
+A imagem é gerada e publicada **automaticamente** pelo workflow [`.github/workflows/docker.yml`](.github/workflows/docker.yml):
+- em toda PR, ele gera a imagem e testa o `docker run` (sobe o container e chama `/api/saude`);
+- no merge para a `main`, faz o mesmo teste e publica `steverogers03/helpdesk-kanban:latest` (e uma tag com o commit) no Docker Hub.
+
+Para gerar manualmente, numa máquina com Docker:
 ```bash
-docker build -t USUARIO_DOCKERHUB/helpdesk-kanban:latest .
+docker build -t steverogers03/helpdesk-kanban:latest .
 docker login
-docker push USUARIO_DOCKERHUB/helpdesk-kanban:latest
+docker push steverogers03/helpdesk-kanban:latest
 ```
+A imagem usa `node:22-slim`, instala só as dependências de produção, roda com o usuário `node` (não root) e tem *healthcheck* em `/api/saude`.
 
 | Variável | Padrão | Uso |
 |---|---|---|
@@ -119,7 +135,11 @@ npm test
 ```
 Testes Jest em `tests/` (o total aparece no resumo do `npm test`):
 - `regras.test.js` — validação de chamado, CEP, regra de mudança de status, SLA (que congela quando o chamado é resolvido) e montagem da issue.
-- `api.test.js` — CRUD pela API com banco em memória; ViaCEP e GitHub são simulados (mocks), então os testes não dependem de internet.
+- `api.test.js` — CRUD de chamados e técnicos pela API com banco em memória, incluindo os casos de erro (técnico inexistente, JSON inválido, regras do Kanban).
+- `filiais.test.js` — cadastro de filial pelo CEP e abertura de issue para chamado crítico.
+- `servicos.test.js` — clientes do ViaCEP e do GitHub (URL, headers, conversão de campos e erros).
+
+ViaCEP e GitHub são simulados (mocks) em todos os testes, então nenhum depende de internet.
 
 O workflow `.github/workflows/ci.yml` roda os testes em toda PR e todo push para a `main`.
 

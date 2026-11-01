@@ -1,0 +1,13 @@
+# Nada disso precisa ir para a imagem
+node_modules
+data
+*.db
+*.db-*
+.env
+tests
+docs
+.git
+.github
+*.md
+Dockerfile
+.dockerignore
